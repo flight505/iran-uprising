@@ -3,6 +3,7 @@
 **Project:** Iran Uprising Digital Memorial
 **Date:** February 5, 2026
 **Status:** Ready for Generation
+**Design System:** See `/design-system/MASTER.md` for colors, typography, and UX guidelines
 
 ---
 
@@ -13,6 +14,37 @@ This document specifies all visual assets for the Digital Divar platform, optimi
 1. **Cultural authenticity** - Iranian mourning traditions (Hajleh, Khatm, Divar)
 2. **Parallax depth** - Layered compositions for immersive scrolling
 3. **Technical practicality** - Solid backgrounds for easy masking (no fake checkerboard)
+4. **Accessibility** - WCAG AA compliance, `prefers-reduced-motion` support
+5. **Performance** - WebP delivery, lazy loading, GPU-accelerated transforms
+
+---
+
+## UX/Accessibility Considerations (from UI/UX Pro Max)
+
+### Animation Guidelines
+- **Duration:** 150-300ms for micro-interactions, max 500ms for UI
+- **Easing:** `ease-out` for entering, `ease-in` for exiting
+- **Parallax:** Must disable when `prefers-reduced-motion: reduce`
+- **Continuous animation:** Only for loading indicators (candle flicker)
+
+### Reduced Motion Fallback
+All parallax layers must have a static fallback:
+```css
+@media (prefers-reduced-motion: reduce) {
+  .parallax-layer { transform: none !important; }
+}
+```
+
+### Color Contrast Requirements
+- Text on dark backgrounds: minimum 4.5:1 ratio
+- Primary text (#F8FAFC) on Night Sky (#0D0D1A): 15.8:1 ✓
+- Secondary text (#94A3B8) on Night Sky (#0D0D1A): 7.2:1 ✓
+- Glow effects: decorative only, never convey meaning alone
+
+### Touch Targets
+- All interactive elements: minimum 44×44px
+- Candle/flower buttons: 48×48px recommended
+- Memorial cards: full card clickable
 
 ### Background Removal Strategy
 
