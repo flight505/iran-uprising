@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t, language, isRTL } from '$lib/i18n';
-	import { Home, Layers, PlusCircle, MessageCircle, Settings, Info, Globe } from 'lucide-svelte';
+	import { isInsideMode, triggerPanic, checkTorConnection } from '$lib/stores';
+	import { Home, Layers, PlusCircle, MessageCircle, Settings, Info, Globe, Shield, Zap } from 'lucide-svelte';
+	import { browser } from '$app/environment';
 
 	// Navigation items
 	const navItems = [
@@ -17,6 +19,14 @@
 	];
 
 	let mobileMenuOpen = $state(false);
+	let isTor = $state(false);
+
+	// Check Tor connection
+	$effect(() => {
+		if (browser) {
+			isTor = checkTorConnection();
+		}
+	});
 
 	function toggleMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
@@ -24,6 +34,10 @@
 
 	function closeMenu() {
 		mobileMenuOpen = false;
+	}
+
+	function handlePanic() {
+		triggerPanic();
 	}
 </script>
 
@@ -55,6 +69,31 @@
 
 			<!-- Right Side -->
 			<div class="flex items-center gap-2">
+				<!-- Security Indicator (Inside Mode) -->
+				{#if $isInsideMode}
+					<div class="flex items-center gap-2">
+						<!-- Tor Status -->
+						<div
+							class="flex items-center gap-1 px-2 py-1 rounded-md text-xs {isTor
+								? 'bg-islam-green/20 text-islam-green'
+								: 'bg-amber-glow/20 text-amber-glow'}"
+						>
+							<Shield class="w-3 h-3" />
+							<span>{isTor ? 'Tor' : 'No Tor'}</span>
+						</div>
+
+						<!-- Panic Button -->
+						<button
+							onclick={handlePanic}
+							class="flex items-center gap-1 px-2 py-1 rounded-md bg-blood-red/20 text-blood-red hover:bg-blood-red/30 transition-colors text-xs"
+							title={$language === 'fa' ? 'خروج اضطراری (Ctrl+Shift+Q)' : 'Emergency Exit (Ctrl+Shift+Q)'}
+						>
+							<Zap class="w-3 h-3" />
+							<span class="hidden lg:inline">{$language === 'fa' ? 'خروج' : 'Exit'}</span>
+						</button>
+					</div>
+				{/if}
+
 				<!-- Language Toggle -->
 				<button
 					onclick={() => language.toggle()}
@@ -79,6 +118,32 @@
 		</div>
 	</div>
 </nav>
+
+<!-- Mobile Top Bar (Inside Mode Only) -->
+{#if $isInsideMode}
+	<div class="md:hidden fixed top-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-b border-white/10">
+		<div class="flex items-center justify-between h-12 px-4">
+			<!-- Tor Status -->
+			<div
+				class="flex items-center gap-1 px-2 py-1 rounded-md text-xs {isTor
+					? 'bg-islam-green/20 text-islam-green'
+					: 'bg-amber-glow/20 text-amber-glow'}"
+			>
+				<Shield class="w-3 h-3" />
+				<span>{isTor ? $t.security.torConnected : $t.security.torDisconnected}</span>
+			</div>
+
+			<!-- Panic Button -->
+			<button
+				onclick={handlePanic}
+				class="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blood-red text-white font-medium text-sm"
+			>
+				<Zap class="w-4 h-4" />
+				<span>{$language === 'fa' ? 'خروج اضطراری' : 'Emergency Exit'}</span>
+			</button>
+		</div>
+	</div>
+{/if}
 
 <!-- Mobile Bottom Navigation -->
 <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-white/10 safe-area-bottom">
@@ -147,6 +212,10 @@
 
 <!-- Spacer for fixed navigation -->
 <div class="hidden md:block h-16"></div>
+<!-- Extra spacer for mobile when Inside mode shows top bar -->
+{#if $isInsideMode}
+	<div class="md:hidden h-12"></div>
+{/if}
 <div class="md:hidden h-16"></div>
 
 <style>
