@@ -13,6 +13,8 @@ import {
 } from '../lib/memorials.js';
 import { savePhoto, getPhoto, photoExists } from '../lib/photos.js';
 import { createFlag, FlagSchema } from '../lib/flags.js';
+import { createThread, getThread, listThreads, ThreadSchema } from '../lib/threads.js';
+import { createMessage, getThreadMessages, MessageSchema } from '../lib/messages.js';
 
 // Response padding target: 8KB
 const RESPONSE_SIZE = 8192;
@@ -197,26 +199,86 @@ const actions: Record<string, (payload: Record<string, unknown>) => Promise<unkn
 		return stats;
 	},
 
-	// Thread actions (placeholder for future implementation)
+	// Thread actions
 	get_threads: async (payload) => {
-		const type = String(payload.type || 'open');
-		// TODO: Implement when messaging is added
-		return { threads: [], type };
+		const type = payload.type ? String(payload.type) : undefined;
+		const memorialHash = payload.memorial_hash ? String(payload.memorial_hash) : undefined;
+		const limit = Math.min(Math.max(Number(payload.limit) || 20, 1), 100);
+		const offset = Math.max(Number(payload.offset) || 0, 0);
+
+		const validTypes = ['open', 'private', 'memorial'];
+		const threadType = type && validTypes.includes(type) ? (type as 'open' | 'private' | 'memorial') : undefined;
+
+		const result = listThreads({ type: threadType, memorial_hash: memorialHash, limit, offset });
+		return { threads: result.threads, total: result.total };
 	},
 
-	get_thread: async (_payload) => {
-		// TODO: Implement when messaging is added
-		return { thread: null, messages: [] };
+	get_thread: async (payload) => {
+		const hash = String(payload.hash || '');
+		if (hash.length !== 64) {
+			return { thread: null, messages: [], error: 'Invalid hash' };
+		}
+
+		const thread = getThread(hash);
+		if (!thread) {
+			return { thread: null, messages: [], error: 'Thread not found' };
+		}
+
+		const limit = Math.min(Math.max(Number(payload.limit) || 50, 1), 100);
+		const offset = Math.max(Number(payload.offset) || 0, 0);
+		const { messages, total } = getThreadMessages(hash, { limit, offset });
+
+		return { thread, messages, total };
 	},
 
-	create_thread: async () => {
-		// TODO: Implement when messaging is added
-		return { hash: null, error: 'Messaging not yet implemented' };
+	create_thread: async (payload) => {
+		try {
+			const threadData = ThreadSchema.parse(payload);
+			const thread = createThread(threadData);
+			return { hash: thread.hash, thread };
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				return { hash: null, error: 'Invalid thread data' };
+			}
+			throw err;
+		}
 	},
 
-	post_message: async () => {
-		// TODO: Implement when messaging is added
-		return { hash: null, error: 'Messaging not yet implemented' };
+	post_message: async (payload) => {
+		try {
+			const messageData = MessageSchema.parse({
+				thread_hash: payload.thread_hash,
+				ciphertext: payload.ciphertext,
+				expires_at: payload.expires_at
+			});
+
+			// Verify thread exists
+			const thread = getThread(messageData.thread_hash);
+			if (!thread) {
+				return { hash: null, error: 'Thread not found' };
+			}
+
+			const message = createMessage(messageData);
+			return { hash: message.hash, message };
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				return { hash: null, error: 'Invalid message data' };
+			}
+			throw err;
+		}
+	},
+
+	get_messages: async (payload) => {
+		const threadHash = String(payload.thread_hash || '');
+		if (threadHash.length !== 64) {
+			return { messages: [], error: 'Invalid thread hash' };
+		}
+
+		const limit = Math.min(Math.max(Number(payload.limit) || 50, 1), 100);
+		const offset = Math.max(Number(payload.offset) || 0, 0);
+
+		const { messages, total } = getThreadMessages(threadHash, { limit, offset });
+		return { messages, total };
 	}
 };
 

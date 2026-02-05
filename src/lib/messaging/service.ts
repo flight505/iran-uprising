@@ -1,50 +1,40 @@
 // Secure Messaging Service
-// E2E encrypted messaging using Signal Protocol
+// E2E encrypted messaging using WebCrypto (ECDH + AES-GCM)
 
 import { browser } from '$app/environment';
 import {
-	initializeSignalProtocol,
-	getLocalKeyBundle,
-	establishSession,
-	encryptMessage,
-	decryptMessage,
-	hasSession,
-	arrayBufferToBase64,
-	base64ToArrayBuffer
+	getOrCreateIdentity,
+	encryptForThread,
+	decryptFromThread,
+	isEncryptionAvailable,
+	clearAllCryptoData
 } from '$lib/crypto/index.js';
 
 // Message types
 export interface SecureMessage {
-	id: string;
+	hash: string;
 	threadHash: string;
-	senderHash: string;
 	ciphertext: string;
-	messageType: number;
-	timestamp: string;
+	iv: string;
+	timestampDay: string;
 	expiresAt: string;
 }
 
 export interface DecryptedMessage {
 	id: string;
 	threadHash: string;
-	senderHash: string;
 	plaintext: string;
 	timestamp: string;
 	expiresAt: string;
 }
 
-export interface KeyBundle {
-	registrationId: number;
-	identityKey: string; // base64
-	signedPreKey: {
-		keyId: number;
-		publicKey: string; // base64
-		signature: string; // base64
-	};
-	preKey?: {
-		keyId: number;
-		publicKey: string; // base64
-	};
+export interface Thread {
+	hash: string;
+	type: 'open' | 'private' | 'memorial';
+	title?: string;
+	messageCount: number;
+	createdDay: string;
+	expiresAt: string;
 }
 
 // API base URL
@@ -90,113 +80,29 @@ async function apiRequest<T>(action: string, payload?: Record<string, unknown>):
 export async function initializeMessaging(): Promise<{ isNew: boolean }> {
 	if (!browser) return { isNew: false };
 
-	const result = await initializeSignalProtocol();
-
-	if (result.isNew) {
-		// Register our key bundle with the server
-		const bundle = await getLocalKeyBundle();
-		if (bundle) {
-			await registerKeyBundle(bundle);
-		}
+	if (!isEncryptionAvailable()) {
+		throw new Error('WebCrypto not available');
 	}
 
-	return { isNew: result.isNew };
+	// Get or create identity (generates keys if needed)
+	const identity = await getOrCreateIdentity();
+
+	// Check if this is a new identity by looking at the created timestamp
+	// For simplicity, we'll just return false - identity is created once
+	return { isNew: identity.publicKey !== null };
 }
 
-// Register our key bundle with the server
-async function registerKeyBundle(bundle: {
-	registrationId: number;
-	identityKey: ArrayBuffer;
-	signedPreKey: {
-		keyId: number;
-		publicKey: ArrayBuffer;
-		signature: ArrayBuffer;
-	};
-	preKey?: {
-		keyId: number;
-		publicKey: ArrayBuffer;
-	};
-}): Promise<void> {
-	const keyBundle: KeyBundle = {
-		registrationId: bundle.registrationId,
-		identityKey: arrayBufferToBase64(bundle.identityKey),
-		signedPreKey: {
-			keyId: bundle.signedPreKey.keyId,
-			publicKey: arrayBufferToBase64(bundle.signedPreKey.publicKey),
-			signature: arrayBufferToBase64(bundle.signedPreKey.signature)
-		}
-	};
-
-	if (bundle.preKey) {
-		keyBundle.preKey = {
-			keyId: bundle.preKey.keyId,
-			publicKey: arrayBufferToBase64(bundle.preKey.publicKey)
-		};
-	}
-
-	await apiRequest('register_keys', { bundle: keyBundle });
-}
-
-// Fetch another user's key bundle
-export async function fetchKeyBundle(userHash: string): Promise<KeyBundle | null> {
-	try {
-		const result = await apiRequest<{ bundle: KeyBundle | null }>('get_keys', { hash: userHash });
-		return result.bundle;
-	} catch {
-		return null;
-	}
-}
-
-// Establish secure session with another user
-export async function establishSecureSession(userHash: string): Promise<boolean> {
-	// Check if we already have a session
-	if (await hasSession(userHash)) {
-		return true;
-	}
-
-	// Fetch their key bundle
-	const bundle = await fetchKeyBundle(userHash);
-	if (!bundle) {
-		return false;
-	}
-
-	// Convert base64 keys back to ArrayBuffers
-	const keyBundle = {
-		registrationId: bundle.registrationId,
-		identityKey: base64ToArrayBuffer(bundle.identityKey),
-		signedPreKey: {
-			keyId: bundle.signedPreKey.keyId,
-			publicKey: base64ToArrayBuffer(bundle.signedPreKey.publicKey),
-			signature: base64ToArrayBuffer(bundle.signedPreKey.signature)
-		},
-		preKey: bundle.preKey
-			? {
-					keyId: bundle.preKey.keyId,
-					publicKey: base64ToArrayBuffer(bundle.preKey.publicKey)
-				}
-			: undefined
-	};
-
-	// Establish session
-	await establishSession(userHash, keyBundle);
-	return true;
-}
-
-// Send an encrypted message
+// Send an encrypted message to a thread
 export async function sendSecureMessage(
 	threadHash: string,
-	recipientHash: string,
+	_recipientHash: string, // Kept for API compatibility but using thread-based encryption
 	plaintext: string,
 	expiresInDays: number = 30
 ): Promise<string> {
-	// Ensure we have a session
-	const hasActiveSession = await establishSecureSession(recipientHash);
-	if (!hasActiveSession) {
-		throw new Error('Could not establish secure session');
-	}
+	if (!browser) throw new Error('Messaging requires browser');
 
-	// Encrypt the message
-	const encrypted = await encryptMessage(recipientHash, plaintext);
+	// Encrypt the message for the thread
+	const encrypted = await encryptForThread(threadHash, plaintext);
 
 	// Calculate expiration
 	const expiresAt = new Date();
@@ -205,17 +111,27 @@ export async function sendSecureMessage(
 	// Send to server
 	const result = await apiRequest<{ hash: string }>('post_message', {
 		thread_hash: threadHash,
-		ciphertext: encrypted.body,
-		message_type: encrypted.type,
+		ciphertext: JSON.stringify({
+			ct: encrypted.ciphertext,
+			iv: encrypted.iv
+		}),
 		expires_at: expiresAt.toISOString().split('T')[0]
 	});
 
 	return result.hash;
 }
 
-// Receive and decrypt messages
+// Receive and decrypt messages from a thread
 export async function receiveMessages(threadHash: string): Promise<DecryptedMessage[]> {
-	const result = await apiRequest<{ messages: SecureMessage[] }>('get_messages', {
+	const result = await apiRequest<{
+		messages: Array<{
+			hash: string;
+			thread_hash: string;
+			ciphertext: string;
+			timestamp_day: string;
+			expires_at: string;
+		}>;
+	}>('get_messages', {
 		thread_hash: threadHash
 	});
 
@@ -223,19 +139,29 @@ export async function receiveMessages(threadHash: string): Promise<DecryptedMess
 
 	for (const msg of result.messages) {
 		try {
-			const plaintext = await decryptMessage(msg.senderHash, {
-				type: msg.messageType,
-				body: msg.ciphertext,
-				registrationId: 0
-			});
+			// Parse the encrypted payload
+			let ciphertext: string;
+			let iv: string;
+
+			try {
+				const parsed = JSON.parse(msg.ciphertext);
+				ciphertext = parsed.ct;
+				iv = parsed.iv;
+			} catch {
+				// If not JSON, skip (old format or invalid)
+				console.warn('Skipping message with invalid format');
+				continue;
+			}
+
+			// Decrypt the message
+			const plaintext = await decryptFromThread(threadHash, ciphertext, iv);
 
 			decrypted.push({
-				id: msg.id,
-				threadHash: msg.threadHash,
-				senderHash: msg.senderHash,
+				id: msg.hash,
+				threadHash: msg.thread_hash,
 				plaintext,
-				timestamp: msg.timestamp,
-				expiresAt: msg.expiresAt
+				timestamp: msg.timestamp_day,
+				expiresAt: msg.expires_at
 			});
 		} catch (err) {
 			console.error('Failed to decrypt message:', err);
@@ -252,7 +178,11 @@ export async function createThread(options: {
 	title?: string;
 	memorialHash?: string;
 }): Promise<string> {
-	const result = await apiRequest<{ hash: string }>('create_thread', options);
+	const result = await apiRequest<{ hash: string }>('create_thread', {
+		type: options.type,
+		title: options.title,
+		memorial_hash: options.memorialHash
+	});
 	return result.hash;
 }
 
@@ -260,30 +190,64 @@ export async function createThread(options: {
 export async function getThreads(options?: {
 	type?: 'open' | 'private' | 'memorial';
 	memorialHash?: string;
-}): Promise<
-	Array<{
-		hash: string;
-		type: string;
-		title?: string;
-		messageCount: number;
-		createdDay: string;
-	}>
-> {
+}): Promise<Thread[]> {
 	const result = await apiRequest<{
 		threads: Array<{
 			hash: string;
-			type: string;
+			type: 'open' | 'private' | 'memorial';
 			title?: string;
 			message_count: number;
 			created_day: string;
+			expires_at: string;
 		}>;
-	}>('get_threads', options);
+	}>('get_threads', {
+		type: options?.type,
+		memorial_hash: options?.memorialHash
+	});
 
 	return result.threads.map((t) => ({
 		hash: t.hash,
 		type: t.type,
 		title: t.title,
 		messageCount: t.message_count,
-		createdDay: t.created_day
+		createdDay: t.created_day,
+		expiresAt: t.expires_at
 	}));
 }
+
+// Get a single thread
+export async function getThread(hash: string): Promise<Thread | null> {
+	try {
+		const result = await apiRequest<{
+			thread: {
+				hash: string;
+				type: 'open' | 'private' | 'memorial';
+				title?: string;
+				message_count: number;
+				created_day: string;
+				expires_at: string;
+			} | null;
+		}>('get_thread', { hash });
+
+		if (!result.thread) return null;
+
+		return {
+			hash: result.thread.hash,
+			type: result.thread.type,
+			title: result.thread.title,
+			messageCount: result.thread.message_count,
+			createdDay: result.thread.created_day,
+			expiresAt: result.thread.expires_at
+		};
+	} catch {
+		return null;
+	}
+}
+
+// Clear all messaging data (for privacy)
+export async function clearMessagingData(): Promise<void> {
+	await clearAllCryptoData();
+}
+
+// Check if encryption is available
+export { isEncryptionAvailable };

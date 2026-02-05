@@ -1,13 +1,14 @@
 // Secure Messaging module exports
 export {
 	initializeMessaging,
-	fetchKeyBundle,
-	establishSecureSession,
 	sendSecureMessage,
 	receiveMessages,
 	createThread,
 	getThreads,
+	getThread,
+	clearMessagingData,
+	isEncryptionAvailable,
 	type SecureMessage,
 	type DecryptedMessage,
-	type KeyBundle
+	type Thread
 } from './service.js';

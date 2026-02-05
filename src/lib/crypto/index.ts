@@ -1,19 +1,19 @@
 // Cryptography module exports
-// Signal Protocol E2E encryption for messaging
+// WebCrypto-based E2E encryption for messaging
 
 export {
-	initializeSignalProtocol,
-	generateIdentity,
-	generatePreKeys,
-	generateSignedPreKey,
-	getLocalKeyBundle,
-	establishSession,
+	getOrCreateIdentity,
+	getLocalPublicKey,
 	encryptMessage,
 	decryptMessage,
-	hasSession,
-	clearSignalData,
-	arrayBufferToBase64,
-	base64ToArrayBuffer
-} from './signal-client.js';
-
-export { SignalProtocolStore } from './signal-store.js';
+	encryptForThread,
+	decryptFromThread,
+	deriveThreadKey,
+	isEncryptionAvailable,
+	clearAllCryptoData,
+	sha256,
+	generateRandomId,
+	type KeyPair,
+	type EncryptedMessage,
+	type DecryptedMessage
+} from './webcrypto-e2e.js';
