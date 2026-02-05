@@ -2,6 +2,9 @@
   "name": "iran-uprising-api",
   "version": "0.1.0",
   "type": "module",
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
@@ -14,7 +17,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.14",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.19.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
