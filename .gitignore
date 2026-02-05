@@ -49,3 +49,12 @@ temp/
 *.key
 *.crt
 secrets/
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Vercel/Netlify/Wrangler
+.vercel
+.netlify
+.wrangler

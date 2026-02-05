@@ -1,0 +1,254 @@
+@import 'tailwindcss';
+
+/* ============================================
+   IRAN UPRISING DESIGN SYSTEM
+   Digital Divar - Memorial Platform
+   ============================================ */
+
+@theme {
+	/* Cultural Colors */
+	--color-islam-green: #00a651;
+	--color-islam-green-light: #00c962;
+	--color-islam-green-dark: #008a44;
+	--color-amber-glow: #ffbf00;
+	--color-blood-red: #8b0000;
+	--color-spray-red: #ff0000;
+
+	/* Background & Surface */
+	--color-night-sky: #0d0d1a;
+	--color-surface: #1a1a2e;
+	--color-surface-raised: #252540;
+	--color-deep-black: #000000;
+
+	/* Text Colors */
+	--color-text-primary: #f8fafc;
+	--color-text-secondary: #94a3b8;
+	--color-text-muted: #64748b;
+
+	/* Memorial Items */
+	--color-termeh-red: #722f37;
+	--color-termeh-gold: #d4af37;
+	--color-brass: #b5a642;
+	--color-candlelight: #ffe4b5;
+
+	/* Semantic Colors */
+	--color-success: #10b981;
+	--color-warning: #f59e0b;
+	--color-error: #ef4444;
+	--color-info: #3b82f6;
+
+	/* Typography */
+	--font-persian: 'Vazirmatn', 'Tahoma', 'Arial', sans-serif;
+	--font-latin: 'Inter', system-ui, sans-serif;
+
+	/* Animations */
+	--animate-candle-flicker: candle-flicker 2s ease-in-out infinite;
+}
+
+/* Base Styles */
+:root {
+	color-scheme: dark;
+}
+
+html {
+	font-family: var(--font-latin);
+	background-color: var(--color-night-sky);
+	color: var(--color-text-primary);
+}
+
+/* RTL Support */
+html[dir='rtl'] {
+	font-family: var(--font-persian);
+	direction: rtl;
+	text-align: right;
+}
+
+html[dir='rtl'] .font-latin {
+	font-family: var(--font-latin);
+	direction: ltr;
+}
+
+/* Mixed Content (Persian + English) */
+.mixed-content {
+	unicode-bidi: plaintext;
+}
+
+/* Numbers should remain LTR */
+.ltr-numbers {
+	direction: ltr;
+	display: inline-block;
+}
+
+/* Focus States */
+:focus-visible {
+	outline: 2px solid var(--color-islam-green);
+	outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--color-surface-raised);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-text-muted);
+}
+
+/* Candle Flicker Animation */
+@keyframes candle-flicker {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	25% {
+		opacity: 0.9;
+		transform: scale(0.98) rotate(-1deg);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.02);
+	}
+	75% {
+		opacity: 0.95;
+		transform: scale(0.99) rotate(1deg);
+	}
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.parallax-layer {
+		transform: none !important;
+	}
+
+	.candle-flame {
+		animation: none !important;
+	}
+}
+
+/* Glow Effects */
+.candle-glow {
+	box-shadow:
+		0 0 20px rgba(255, 191, 0, 0.3),
+		0 0 40px rgba(255, 191, 0, 0.1);
+}
+
+.sacred-glow {
+	box-shadow:
+		0 0 30px rgba(0, 166, 81, 0.2),
+		0 0 60px rgba(0, 166, 81, 0.1);
+}
+
+.memorial-hover:hover {
+	box-shadow: 0 0 15px rgba(0, 166, 81, 0.15);
+}
+
+/* Screen Blend Mode for Overlays */
+.blend-screen {
+	mix-blend-mode: screen;
+}
+
+/* Button Base Styles */
+.btn-primary {
+	display: inline-flex;
+	cursor: pointer;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.5rem;
+	padding: 0.75rem 1.5rem;
+	font-weight: 500;
+	transition: background-color 150ms, color 150ms;
+	background-color: var(--color-islam-green);
+	color: white;
+}
+
+.btn-primary:hover {
+	background-color: var(--color-islam-green-dark);
+}
+
+.btn-primary:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(0, 166, 81, 0.5);
+}
+
+.btn-secondary {
+	display: inline-flex;
+	cursor: pointer;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.5rem;
+	padding: 0.75rem 1.5rem;
+	font-weight: 500;
+	transition: background-color 150ms, color 150ms;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	color: white;
+	background-color: transparent;
+}
+
+.btn-secondary:hover {
+	background-color: rgba(255, 255, 255, 0.05);
+}
+
+.btn-secondary:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+	display: inline-flex;
+	cursor: pointer;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.5rem;
+	padding: 0.75rem 1.5rem;
+	font-weight: 500;
+	transition: background-color 150ms, color 150ms;
+	background-color: var(--color-blood-red);
+	color: white;
+}
+
+.btn-danger:hover {
+	background-color: rgba(139, 0, 0, 0.9);
+}
+
+.btn-danger:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(139, 0, 0, 0.5);
+}
+
+.btn-ghost {
+	cursor: pointer;
+	border-radius: 0.5rem;
+	padding: 0.5rem 1rem;
+	font-weight: 500;
+	color: var(--color-text-secondary);
+	transition: background-color 150ms, color 150ms;
+}
+
+.btn-ghost:hover {
+	background-color: rgba(255, 255, 255, 0.05);
+	color: white;
+}
