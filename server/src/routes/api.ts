@@ -1,9 +1,19 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
+import {
+	createMemorial,
+	getMemorial,
+	listMemorials,
+	searchMemorials,
+	lightCandle,
+	leaveFlower,
+	getStats,
+	MemorialSchema
+} from '../lib/memorials.js';
+import { savePhoto, getPhoto, photoExists } from '../lib/photos.js';
+import { createFlag, FlagSchema } from '../lib/flags.js';
 
-// Request padding target: 4KB
-const REQUEST_SIZE = 4096;
 // Response padding target: 8KB
 const RESPONSE_SIZE = 8192;
 
@@ -15,7 +25,6 @@ const ApiRequestSchema = z.object({
 	padding: z.string().optional()
 });
 
-type ApiRequest = z.infer<typeof ApiRequestSchema>;
 
 // API response type
 interface ApiResponse {
@@ -32,96 +41,188 @@ function generatePadding(currentSize: number, targetSize: number): string {
 }
 
 // Action handlers
-const actions: Record<
-	string,
-	(payload: Record<string, unknown>) => Promise<unknown>
-> = {
+const actions: Record<string, (payload: Record<string, unknown>) => Promise<unknown>> = {
 	// Health check
-	ping: async () => ({ pong: true, timestamp_day: new Date().toISOString().split('T')[0] }),
+	ping: async () => ({
+		pong: true,
+		timestamp_day: new Date().toISOString().split('T')[0]
+	}),
 
-	// Memorial actions (to be implemented)
+	// Memorial actions
 	get_memorials: async (payload) => {
-		const limit = Number(payload.limit) || 20;
-		const offset = Number(payload.offset) || 0;
-		// TODO: Fetch from database
-		return { memorials: [], total: 0, limit, offset };
+		const limit = Math.min(Math.max(Number(payload.limit) || 20, 1), 100);
+		const offset = Math.max(Number(payload.offset) || 0, 0);
+		const location = payload.location ? String(payload.location) : undefined;
+		const search = payload.search ? String(payload.search) : undefined;
+
+		const result = listMemorials({ limit, offset, location, search });
+		return {
+			memorials: result.memorials,
+			total: result.total,
+			limit,
+			offset
+		};
 	},
 
 	get_memorial: async (payload) => {
 		const hash = String(payload.hash || '');
-		// TODO: Fetch from database
-		return { memorial: null };
+		if (hash.length !== 64) {
+			return { memorial: null, error: 'Invalid hash' };
+		}
+
+		const memorial = getMemorial(hash);
+		return { memorial };
 	},
 
 	create_memorial: async (payload) => {
-		// TODO: Validate proof-of-work, create memorial
-		return { hash: null, error: 'Not implemented' };
+		try {
+			// Validate memorial data
+			const memorialData = MemorialSchema.parse(payload);
+
+			// Verify photo exists
+			if (!photoExists(memorialData.photo_hash)) {
+				return { hash: null, error: 'Photo not found. Upload photo first.' };
+			}
+
+			// Create memorial
+			const memorial = createMemorial(memorialData);
+			return { hash: memorial.hash, memorial };
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				return { hash: null, error: 'Invalid memorial data' };
+			}
+			throw err;
+		}
 	},
 
 	light_candle: async (payload) => {
 		const hash = String(payload.hash || '');
-		// TODO: Increment candle count
+		if (hash.length !== 64) {
+			return { success: false, error: 'Invalid hash' };
+		}
+
+		const success = lightCandle(hash);
+		if (!success) {
+			return { success: false, error: 'Memorial not found' };
+		}
+
 		return { success: true, hash };
 	},
 
 	leave_flower: async (payload) => {
 		const hash = String(payload.hash || '');
-		// TODO: Increment flower count
+		if (hash.length !== 64) {
+			return { success: false, error: 'Invalid hash' };
+		}
+
+		const success = leaveFlower(hash);
+		if (!success) {
+			return { success: false, error: 'Memorial not found' };
+		}
+
 		return { success: true, hash };
 	},
 
 	search: async (payload) => {
-		const query = String(payload.query || '');
-		// TODO: Search memorials
-		return { results: [], query };
+		const query = String(payload.query || '').trim();
+		if (query.length < 2) {
+			return { results: [], query, error: 'Query too short' };
+		}
+
+		const limit = Math.min(Math.max(Number(payload.limit) || 20, 1), 50);
+		const results = searchMemorials(query, limit);
+		return { results, query };
 	},
 
-	// Thread actions (to be implemented)
-	get_threads: async (payload) => {
-		const type = String(payload.type || 'open');
-		// TODO: Fetch threads
-		return { threads: [], type };
+	// Photo upload
+	upload_photo: async (payload) => {
+		const base64Data = String(payload.data || '');
+		const mimeType = String(payload.mime_type || 'image/jpeg');
+
+		if (!base64Data) {
+			return { hash: null, error: 'No image data provided' };
+		}
+
+		try {
+			const buffer = Buffer.from(base64Data, 'base64');
+			const hash = savePhoto(buffer, mimeType);
+			return { hash };
+		} catch (err) {
+			if (err instanceof Error) {
+				return { hash: null, error: err.message };
+			}
+			throw err;
+		}
 	},
 
-	get_thread: async (payload) => {
+	get_photo: async (payload) => {
 		const hash = String(payload.hash || '');
-		// TODO: Fetch thread with messages
-		return { thread: null, messages: [] };
+		if (hash.length !== 64) {
+			return { data: null, error: 'Invalid hash' };
+		}
+
+		const photo = getPhoto(hash);
+		if (!photo) {
+			return { data: null, error: 'Photo not found' };
+		}
+
+		return {
+			data: photo.data.toString('base64'),
+			mime_type: photo.mimeType
+		};
 	},
 
-	create_thread: async (payload) => {
-		// TODO: Validate proof-of-work, create thread
-		return { hash: null, error: 'Not implemented' };
-	},
-
-	post_message: async (payload) => {
-		// TODO: Validate proof-of-work, post message
-		return { hash: null, error: 'Not implemented' };
-	},
-
+	// Content flagging
 	flag_content: async (payload) => {
-		const hash = String(payload.hash || '');
-		const reason = String(payload.reason || '');
-		// TODO: Record flag (anonymously)
-		return { success: true, hash, reason };
+		try {
+			const flagData = FlagSchema.parse({
+				content_hash: payload.hash,
+				content_type: payload.type,
+				reason: payload.reason
+			});
+
+			const flag = createFlag(flagData);
+			return { success: true, id: flag.id };
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				return { success: false, error: 'Invalid flag data' };
+			}
+			throw err;
+		}
 	},
 
 	// Statistics
 	get_stats: async () => {
-		// TODO: Fetch aggregate stats
-		return {
-			total_memorials: 0,
-			total_candles: 0,
-			total_flowers: 0,
-			by_location: {},
-			by_month: {}
-		};
+		const stats = getStats();
+		return stats;
+	},
+
+	// Thread actions (placeholder for future implementation)
+	get_threads: async (payload) => {
+		const type = String(payload.type || 'open');
+		// TODO: Implement when messaging is added
+		return { threads: [], type };
+	},
+
+	get_thread: async (_payload) => {
+		// TODO: Implement when messaging is added
+		return { thread: null, messages: [] };
+	},
+
+	create_thread: async () => {
+		// TODO: Implement when messaging is added
+		return { hash: null, error: 'Messaging not yet implemented' };
+	},
+
+	post_message: async () => {
+		// TODO: Implement when messaging is added
+		return { hash: null, error: 'Messaging not yet implemented' };
 	}
 };
 
 export async function handleApiRequest(
 	request: FastifyRequest,
-	reply: FastifyReply
+	_reply: FastifyReply
 ): Promise<ApiResponse> {
 	try {
 		// Parse and validate request
