@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Flame, Heart, Users } from 'lucide-svelte';
+	import { t, isRTL } from '$lib/i18n';
 
 	// Parallax scroll state
 	let scrollY = $state(0);
 
-	// Stats (will be dynamic later)
+	// Stats (will be dynamic later from API)
 	const stats = {
 		memorials: 34400,
 		candles: 128750,
@@ -61,35 +62,35 @@
 	</div>
 
 	<!-- Hero Content -->
-	<div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 text-center">
+	<div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 pt-16 text-center">
 		<!-- Persian Title -->
 		<h1 class="mb-4 text-5xl font-bold text-white drop-shadow-lg md:text-7xl lg:text-8xl">
-			زن، زندگی، آزادی
+			{$t.hero.title}
 		</h1>
 
-		<!-- English Subtitle -->
-		<p class="font-latin mb-8 text-xl text-text-secondary md:text-2xl">
-			Woman, Life, Freedom
+		<!-- Subtitle in other language -->
+		<p class="mb-8 text-xl text-text-secondary md:text-2xl" class:font-latin={$isRTL}>
+			{$t.hero.subtitle}
 		</p>
 
 		<!-- Memorial Count -->
 		<div class="candle-glow mb-12 rounded-2xl bg-surface/80 px-8 py-6 backdrop-blur-sm">
-			<p class="text-lg text-text-secondary">In memory of</p>
+			<p class="text-lg text-text-secondary">{$t.hero.inMemoryOf}</p>
 			<p class="ltr-numbers text-5xl font-bold text-amber-glow md:text-6xl">
 				{stats.memorials.toLocaleString()}+
 			</p>
-			<p class="mt-2 text-lg text-text-secondary">souls lost in the uprising</p>
+			<p class="mt-2 text-lg text-text-secondary">{$t.hero.soulsLost}</p>
 		</div>
 
 		<!-- CTA Buttons -->
 		<div class="flex flex-col gap-4 sm:flex-row">
 			<a href="/wall" class="btn-primary">
-				<Flame class="ml-2 h-5 w-5" />
-				Light a Candle
+				<span class={$isRTL ? 'ml-2' : 'mr-2'}><Flame class="h-5 w-5" /></span>
+				{$t.hero.lightCandle}
 			</a>
-			<a href="/memorial" class="btn-secondary">
-				<Heart class="ml-2 h-5 w-5" />
-				View Memorial Wall
+			<a href="/wall" class="btn-secondary">
+				<span class={$isRTL ? 'ml-2' : 'mr-2'}><Heart class="h-5 w-5" /></span>
+				{$t.hero.viewWall}
 			</a>
 		</div>
 
@@ -112,7 +113,7 @@
 				<p class="ltr-numbers text-4xl font-bold text-white">
 					{stats.memorials.toLocaleString()}+
 				</p>
-				<p class="mt-2 text-text-secondary">Lives Remembered</p>
+				<p class="mt-2 text-text-secondary">{$t.wall.livesRemembered}</p>
 			</div>
 
 			<!-- Candles -->
@@ -121,7 +122,7 @@
 				<p class="ltr-numbers text-4xl font-bold text-white">
 					{stats.candles.toLocaleString()}+
 				</p>
-				<p class="mt-2 text-text-secondary">Candles Lit</p>
+				<p class="mt-2 text-text-secondary">{$t.wall.candlesLit}</p>
 			</div>
 
 			<!-- Visitors -->
@@ -130,7 +131,7 @@
 				<p class="ltr-numbers text-4xl font-bold text-white">
 					{stats.visitors.toLocaleString()}+
 				</p>
-				<p class="mt-2 text-text-secondary">Global Visitors</p>
+				<p class="mt-2 text-text-secondary">{$t.wall.globalVisitors}</p>
 			</div>
 		</div>
 	</div>
@@ -140,7 +141,7 @@
 <section class="bg-night-sky py-20">
 	<div class="mx-auto max-w-4xl px-4 text-center">
 		<h2 class="mb-6 text-3xl font-bold text-white md:text-4xl">دیوار دیجیتال</h2>
-		<p class="font-latin mb-4 text-xl text-islam-green">Digital Divar</p>
+		<p class="mb-4 text-xl text-islam-green font-latin">Digital Divar</p>
 		<p class="text-lg leading-relaxed text-text-secondary">
 			A secure, anonymous memorial platform honoring those who gave their lives for freedom.
 			Like the walls of Tehran that carry messages of resistance, this digital wall preserves
@@ -150,14 +151,13 @@
 </section>
 
 <!-- Footer -->
-<footer class="border-t border-white/10 bg-deep-black py-8">
+<footer class="border-t border-white/10 bg-deep-black py-8 mb-16 md:mb-0">
 	<div class="mx-auto max-w-6xl px-4 text-center">
 		<p class="text-text-muted">
-			<span class="font-latin">Built with love for Iran</span> ·
-			ساخته شده با عشق برای ایران
+			{$t.footer.builtWithLove}
 		</p>
 		<p class="mt-2 text-sm text-text-muted">
-			This platform protects your anonymity. No tracking. No logs. Your voice matters.
+			{$t.footer.noTracking}
 		</p>
 	</div>
 </footer>
