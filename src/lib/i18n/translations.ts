@@ -48,11 +48,16 @@ export interface Translations {
 		photoLabel: string;
 		photoHint: string;
 		namePersian: string;
+		namePersianPlaceholder: string;
 		nameLatin: string;
+		nameLatinPlaceholder: string;
 		age: string;
+		agePlaceholder: string;
 		dateOfDeath: string;
 		location: string;
+		locationPlaceholder: string;
 		circumstances: string;
+		circumstancesPlaceholder: string;
 		submit: string;
 		submitting: string;
 		success: string;
@@ -161,11 +166,16 @@ export const translations: Record<Language, Translations> = {
 			photoLabel: 'عکس',
 			photoHint: 'عکس با روبان سیاه اضافه می‌شود',
 			namePersian: 'نام (فارسی)',
+			namePersianPlaceholder: 'نام کامل',
 			nameLatin: 'نام (انگلیسی)',
+			nameLatinPlaceholder: 'Full name in English',
 			age: 'سن',
+			agePlaceholder: 'سن',
 			dateOfDeath: 'تاریخ شهادت',
 			location: 'شهر/استان',
+			locationPlaceholder: 'شهر یا استان',
 			circumstances: 'شرایط',
+			circumstancesPlaceholder: 'شرح شرایط شهادت (اختیاری)',
 			submit: 'ثبت یادبود',
 			submitting: 'در حال ثبت...',
 			success: 'یادبود با موفقیت ثبت شد'
@@ -267,11 +277,16 @@ export const translations: Record<Language, Translations> = {
 			photoLabel: 'Photo',
 			photoHint: 'Black ribbon will be added automatically',
 			namePersian: 'Name (Persian)',
+			namePersianPlaceholder: 'Full name in Persian',
 			nameLatin: 'Name (English)',
+			nameLatinPlaceholder: 'Full name in English',
 			age: 'Age',
+			agePlaceholder: 'Age',
 			dateOfDeath: 'Date of Death',
 			location: 'City/Province',
+			locationPlaceholder: 'City or province',
 			circumstances: 'Circumstances',
+			circumstancesPlaceholder: 'Describe the circumstances (optional)',
 			submit: 'Submit Memorial',
 			submitting: 'Submitting...',
 			success: 'Memorial submitted successfully'

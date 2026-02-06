@@ -148,7 +148,7 @@
 						bind:value={namePersian}
 						required
 						disabled={submitting}
-						placeholder="نام کامل"
+						placeholder={$t.create.namePersianPlaceholder}
 						class="w-full rounded-xl border border-white/10 bg-surface px-4 py-3 text-white placeholder-text-muted focus:border-amber-glow/50 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 disabled:opacity-50"
 						dir="rtl"
 					/>
@@ -164,7 +164,7 @@
 						type="text"
 						bind:value={nameLatin}
 						disabled={submitting}
-						placeholder="Full name in English"
+						placeholder={$t.create.nameLatinPlaceholder}
 						class="w-full rounded-xl border border-white/10 bg-surface px-4 py-3 text-white placeholder-text-muted font-latin focus:border-amber-glow/50 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 disabled:opacity-50"
 						dir="ltr"
 					/>
@@ -184,7 +184,7 @@
 							min="0"
 							max="150"
 							disabled={submitting}
-							placeholder="سن"
+							placeholder={$t.create.agePlaceholder}
 							class="ltr-numbers w-full rounded-xl border border-white/10 bg-surface px-4 py-3 text-white placeholder-text-muted focus:border-amber-glow/50 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 disabled:opacity-50"
 						/>
 					</div>
@@ -217,7 +217,7 @@
 						required
 						disabled={submitting}
 						list="cities"
-						placeholder="شهر یا استان"
+						placeholder={$t.create.locationPlaceholder}
 						class="w-full rounded-xl border border-white/10 bg-surface px-4 py-3 text-white placeholder-text-muted focus:border-amber-glow/50 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 disabled:opacity-50"
 						dir="rtl"
 					/>
@@ -238,7 +238,7 @@
 						bind:value={circumstances}
 						disabled={submitting}
 						rows="4"
-						placeholder="شرح شرایط شهادت (اختیاری)"
+						placeholder={$t.create.circumstancesPlaceholder}
 						class="w-full resize-none rounded-xl border border-white/10 bg-surface px-4 py-3 text-white placeholder-text-muted focus:border-amber-glow/50 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 disabled:opacity-50"
 						dir="rtl"
 					></textarea>
