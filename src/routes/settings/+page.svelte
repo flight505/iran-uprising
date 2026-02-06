@@ -9,7 +9,11 @@
 		Zap,
 		Eye,
 		EyeOff,
-		ExternalLink
+		ExternalLink,
+		Download,
+		Upload,
+		Smartphone,
+		HardDrive
 	} from 'lucide-svelte';
 	import { t, language } from '$lib/i18n';
 	import {
@@ -19,12 +23,24 @@
 		triggerPanic,
 		checkTorConnection
 	} from '$lib/stores';
+	import {
+		installable,
+		isStandalone,
+		promptInstall,
+		exportMemorialBundle,
+		formatBytes,
+		getStorageQuota
+	} from '$lib/pwa';
 
 	// State
 	let panicUrl = $state('');
 	let isTorConnected = $state(false);
 	let showPanicConfirm = $state(false);
 	let cacheSize = $state<string | null>(null);
+	let storageInfo = $state<{ usage: string; quota: string; percent: number } | null>(null);
+	let exporting = $state(false);
+	let importing = $state(false);
+	let fileInput: HTMLInputElement;
 
 	// Initialize
 	onMount(() => {
@@ -32,7 +48,60 @@
 		panicUrl = $preferences.panicUrl;
 		isTorConnected = checkTorConnection();
 		estimateCacheSize();
+		loadStorageInfo();
 	});
+
+	// Load storage info
+	async function loadStorageInfo() {
+		const quota = await getStorageQuota();
+		if (quota) {
+			storageInfo = {
+				usage: formatBytes(quota.usage),
+				quota: formatBytes(quota.quota),
+				percent: Math.round(quota.percentUsed)
+			};
+		}
+	}
+
+	// Install app
+	async function handleInstall() {
+		await promptInstall();
+	}
+
+	// Export data
+	async function handleExport() {
+		exporting = true;
+		try {
+			const blob = await exportMemorialBundle();
+			if (blob) {
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `iran-uprising-backup-${new Date().toISOString().split('T')[0]}.json`;
+				a.click();
+				URL.revokeObjectURL(url);
+			}
+		} finally {
+			exporting = false;
+		}
+	}
+
+	// Import data
+	async function handleImport(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		importing = true;
+		try {
+			const { importMemorialBundle } = await import('$lib/pwa');
+			await importMemorialBundle(file);
+			await loadStorageInfo();
+		} finally {
+			importing = false;
+			input.value = '';
+		}
+	}
 
 	// Update panic URL
 	function updatePanicUrl() {
@@ -312,26 +381,124 @@
 				</div>
 			</div>
 
-			<!-- Cache -->
-			<div class="rounded-xl bg-surface p-4">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<span class="rounded-lg bg-surface-raised p-2">
-							<Trash2 class="h-5 w-5 text-text-muted" />
-						</span>
-						<div>
-							<h2 class="font-medium text-white">{$t.settings.clearCache}</h2>
-							{#if cacheSize}
-								<p class="text-sm text-text-muted">{$t.settings.cacheSize}: {cacheSize}</p>
-							{/if}
+			<!-- Install App -->
+			{#if $installable && !$isStandalone}
+				<div class="rounded-xl bg-surface p-4">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<span class="rounded-lg bg-amber-glow/20 p-2">
+								<Smartphone class="h-5 w-5 text-amber-glow" />
+							</span>
+							<div>
+								<h2 class="font-medium text-white">
+									{$language === 'fa' ? 'نصب برنامه' : 'Install App'}
+								</h2>
+								<p class="text-sm text-text-muted">
+									{$language === 'fa' ? 'دسترسی سریع‌تر و استفاده آفلاین' : 'Quick access & offline use'}
+								</p>
+							</div>
 						</div>
+						<button
+							onclick={handleInstall}
+							class="flex items-center gap-2 rounded-lg bg-amber-glow px-4 py-2 text-sm font-medium text-night-sky transition-colors hover:bg-amber-glow/90"
+						>
+							<Download class="h-4 w-4" />
+							{$language === 'fa' ? 'نصب' : 'Install'}
+						</button>
 					</div>
+				</div>
+			{/if}
+
+			<!-- Storage -->
+			<div class="rounded-xl bg-surface p-4">
+				<div class="mb-4 flex items-center gap-3">
+					<span class="rounded-lg bg-surface-raised p-2">
+						<HardDrive class="h-5 w-5 text-text-muted" />
+					</span>
+					<div>
+						<h2 class="font-medium text-white">
+							{$language === 'fa' ? 'فضای ذخیره‌سازی' : 'Storage'}
+						</h2>
+						{#if storageInfo}
+							<p class="text-sm text-text-muted">
+								{storageInfo.usage} / {storageInfo.quota} ({storageInfo.percent}%)
+							</p>
+						{/if}
+					</div>
+				</div>
+
+				{#if storageInfo}
+					<div class="mb-4 h-2 overflow-hidden rounded-full bg-surface-raised">
+						<div
+							class="h-full rounded-full transition-all {storageInfo.percent > 80
+								? 'bg-blood-red'
+								: storageInfo.percent > 50
+									? 'bg-amber-glow'
+									: 'bg-islam-green'}"
+							style="width: {storageInfo.percent}%"
+						></div>
+					</div>
+				{/if}
+
+				<div class="flex gap-2">
 					<button
 						onclick={clearCache}
-						class="rounded-lg bg-surface-raised px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/10 hover:text-white"
+						class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-surface-raised px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/10 hover:text-white"
 					>
+						<Trash2 class="h-4 w-4" />
 						{$language === 'fa' ? 'پاک کردن' : 'Clear'}
 					</button>
+				</div>
+			</div>
+
+			<!-- Export/Import -->
+			<div class="rounded-xl bg-surface p-4">
+				<div class="mb-4 flex items-center gap-3">
+					<span class="rounded-lg bg-surface-raised p-2">
+						<Download class="h-5 w-5 text-text-muted" />
+					</span>
+					<div>
+						<h2 class="font-medium text-white">
+							{$language === 'fa' ? 'پشتیبان‌گیری' : 'Backup'}
+						</h2>
+						<p class="text-sm text-text-muted">
+							{$language === 'fa' ? 'صادرات و واردات داده‌ها' : 'Export and import data'}
+						</p>
+					</div>
+				</div>
+
+				<div class="flex gap-2">
+					<button
+						onclick={handleExport}
+						disabled={exporting}
+						class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-surface-raised px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+					>
+						{#if exporting}
+							<span class="h-4 w-4 animate-spin rounded-full border-2 border-text-muted border-t-transparent"></span>
+						{:else}
+							<Download class="h-4 w-4" />
+						{/if}
+						{$language === 'fa' ? 'صادرات' : 'Export'}
+					</button>
+					<button
+						onclick={() => fileInput.click()}
+						disabled={importing}
+						class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-surface-raised px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+					>
+						{#if importing}
+							<span class="h-4 w-4 animate-spin rounded-full border-2 border-text-muted border-t-transparent"></span>
+						{:else}
+							<Upload class="h-4 w-4" />
+						{/if}
+						{$language === 'fa' ? 'واردات' : 'Import'}
+					</button>
+					<input
+						bind:this={fileInput}
+						type="file"
+						accept=".json"
+						onchange={handleImport}
+						class="hidden"
+					/>
 				</div>
 			</div>
 

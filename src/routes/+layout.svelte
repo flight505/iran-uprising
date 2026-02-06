@@ -4,9 +4,13 @@
 	import { browser } from '$app/environment';
 	import { language, t } from '$lib/i18n';
 	import { preferences, reducedMotion, triggerPanic } from '$lib/stores';
+	import { initPWA } from '$lib/pwa';
+	import { setupAutoSync } from '$lib/offline';
 	import Navigation from '$lib/components/ui/Navigation.svelte';
+	import { UpdateNotification, InstallPrompt, OfflineIndicator } from '$lib/components/pwa';
 
 	let { children } = $props();
+	let unsubscribeSync: (() => void) | null = null;
 
 	// Handle keyboard shortcuts
 	function handleKeydown(event: KeyboardEvent) {
@@ -17,10 +21,18 @@
 		}
 	}
 
-	// Initialize stores on mount
+	// Initialize stores and services on mount
 	onMount(() => {
+		// Initialize language and preferences
 		language.init();
 		preferences.init();
+
+		// Initialize PWA features
+		initPWA();
+
+		// Setup auto-sync for offline actions
+		const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+		unsubscribeSync = setupAutoSync(`${apiUrl}/api`);
 
 		// Add keyboard listener
 		if (browser) {
@@ -32,6 +44,9 @@
 		if (browser) {
 			document.removeEventListener('keydown', handleKeydown);
 		}
+		if (unsubscribeSync) {
+			unsubscribeSync();
+		}
 	});
 </script>
 
@@ -40,13 +55,21 @@
 	<link rel="manifest" href="/manifest.json" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<meta name="theme-color" content="#0a0a0f" />
 </svelte:head>
 
 <!-- Apply reduced motion class to body based on preference -->
 <svelte:body class:reduced-motion={$reducedMotion} />
 
+<!-- PWA Components -->
+<OfflineIndicator />
+<UpdateNotification />
+<InstallPrompt />
+
+<!-- Navigation -->
 <Navigation />
 
+<!-- Main Content -->
 <main>
 	{@render children()}
 </main>
