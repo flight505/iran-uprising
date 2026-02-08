@@ -1,16 +1,31 @@
 <script lang="ts">
 	import { Flame, Heart, Users } from 'lucide-svelte';
 	import { t, isRTL } from '$lib/i18n';
+	import { getStats } from '$lib/api/client.js';
 
 	// Parallax scroll state
 	let scrollY = $state(0);
 
-	// Stats (will be dynamic later from API)
-	const stats = {
-		memorials: 34400,
-		candles: 128750,
-		visitors: 45200
-	};
+	// Stats from API
+	let stats = $state({
+		memorials: 0,
+		candles: 0,
+		visitors: 0
+	});
+
+	$effect(() => {
+		getStats()
+			.then((data) => {
+				stats = {
+					memorials: data.total_memorials,
+					candles: data.total_candles,
+					visitors: data.total_flowers
+				};
+			})
+			.catch(() => {
+				// Silently fail - shows 0s until API is reachable
+			});
+	});
 </script>
 
 <svelte:window bind:scrollY />
